@@ -167,6 +167,7 @@ class MainActivity : ComponentActivity() {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             activity.startActivity(installIntent)
+            finishAffinity()
         }
 
     }
