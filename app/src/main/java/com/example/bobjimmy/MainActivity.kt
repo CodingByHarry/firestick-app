@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.FileProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -85,7 +86,7 @@ class MainActivity : ComponentActivity() {
 
                 // Check for update
                 val apiUrl = "https://bobjimmy.xyz/updates.php"
-
+                val currentBuild = getVersionCode().toInt()
                 // Launch the coroutine to make the network request
                 LaunchedEffect(Unit) {
                     try {
@@ -95,6 +96,14 @@ class MainActivity : ComponentActivity() {
                         latestVersionUrl = jsonResponse.getString("url")
 
                         responseData = "Response: $response"
+
+                        if(currentBuild != latestVersion) {
+                            println("UPDATED REQUIRED!")
+                            isDialogOpen.value = true
+                        } else {
+                            isDialogOpen.value = false
+                            println("UP-TO-DATE")
+                        }
                     } catch (e: Exception) {
                         responseData = "Error fetching data: ${e.message}"
                     } finally {
@@ -102,96 +111,99 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Display the result or loading indicator
-                if (isLoading) {
-                    Text("Loading...")
-                } else {
-                    responseData?.let {
-                        Text(it)
-                    }
-                }
 
-                val currentBuild = getVersionCode().toInt()
                 println("VERSION: $latestVersion")
                 println("URL: $latestVersionUrl")
                 println("CURRENT VERSION: $currentBuild")
 
                 // If found and update needed, popup and ask user if they want to update
-                if(currentBuild != latestVersion) {
-                    println("UPDATED REQUIRED!")
-                    isDialogOpen.value = true
-                } else {
-                    println("UP-TO-DATE")
+
+            }
+        }
+    }
+    @SuppressLint("CoroutineCreationDuringComposition")
+    fun DoTheThing(activity: ComponentActivity, url: String) {
+        GlobalScope.launch(Dispatchers.IO) {
+            downloadAndInstallAPK(activity, url)
+        }
+    }
+
+    suspend fun downloadAndInstallAPK(activity: ComponentActivity, apkUrl: String) {
+        try {
+            val url = URL(apkUrl)
+            val connection: HttpURLConnection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connect()
+
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val inputStream: InputStream = connection.inputStream
+                val apkFile = saveApkLocally(activity, inputStream)
+                println("APP DOWNLOADED")
+
+                GlobalScope.launch(Dispatchers.Main) {
+                    installAPK(activity, apkFile)
                 }
+            } else {
+                Log.e("DownloadAPK", "Error downloading APK: ${connection.responseCode}")
             }
+
+            connection.disconnect()
+        } catch (e: Exception) {
+            Log.e("DownloadAPK", "Error downloading APK: ${e.message}")
         }
     }
-}
 
-@SuppressLint("CoroutineCreationDuringComposition")
-fun DoTheThing(activity: ComponentActivity, url: String) {
-    GlobalScope.launch(Dispatchers.IO) {
-        downloadAndInstallAPK(activity, url)
-    }
-}
+    fun installAPK(activity: ComponentActivity, apkFile: File?) {
+        if(apkFile?.exists() == true){
+            val apkUri = FileProvider.getUriForFile(
+                activity,
+                "com.example.bobjimmy.fileprovider",
+                apkFile
+            )
 
-suspend fun downloadAndInstallAPK(activity: ComponentActivity, apkUrl: String) {
-    try {
-        val url = URL(apkUrl)
-        val connection: HttpURLConnection = url.openConnection() as HttpURLConnection
-        connection.requestMethod = "GET"
-        connection.connect()
-
-        if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-            val inputStream: InputStream = connection.inputStream
-            val apkFile = saveApkLocally(activity, inputStream)
-            println("APP DOWNLOADED")
-
-            GlobalScope.launch(Dispatchers.Main) {
-                installAPK(activity, apkFile)
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-        } else {
-            Log.e("DownloadAPK", "Error downloading APK: ${connection.responseCode}")
+            activity.startActivity(installIntent)
         }
 
-        connection.disconnect()
-    } catch (e: Exception) {
-        Log.e("DownloadAPK", "Error downloading APK: ${e.message}")
     }
-}
 
-suspend fun saveApkLocally(activity: ComponentActivity, inputStream: InputStream): File? {
-    try {
-        // Check if external storage is available
-        if (Environment.MEDIA_MOUNTED == Environment.getExternalStorageState()) {
-            val externalFilesDir = activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            val apkFile = File(externalFilesDir, "app.apk")
+    suspend fun saveApkLocally(activity: ComponentActivity, inputStream: InputStream): File? {
+        try {
+            // Check if external storage is available
+            if (Environment.MEDIA_MOUNTED == Environment.getExternalStorageState()) {
+                val externalFilesDir = activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                val apkFile = File(externalFilesDir, "app.apk")
 
-            val outputStream = FileOutputStream(apkFile)
+                val outputStream = FileOutputStream(apkFile)
 
-            try {
-                val buffer = ByteArray(4096)
-                var len: Int
+                try {
+                    val buffer = ByteArray(4096)
+                    var len: Int
 
-                while (inputStream.read(buffer).also { len = it } != -1) {
-                    outputStream.write(buffer, 0, len)
+                    while (inputStream.read(buffer).also { len = it } != -1) {
+                        outputStream.write(buffer, 0, len)
+                    }
+                    println("COMPLETED SAVE?")
+                } finally {
+                    println("CLOSED STREAMS")
+                    inputStream.close()
+                    outputStream.close()
                 }
-                println("COMPLETED SAVE?")
-            } finally {
-                println("CLOSED STREAMS")
-                inputStream.close()
-                outputStream.close()
+
+                return apkFile
+            } else {
+                Log.e("SaveAPKLocally", "External storage is not available.")
             }
-
-            return apkFile
-        } else {
-            Log.e("SaveAPKLocally", "External storage is not available.")
+        } catch (e: Exception) {
+            Log.e("SaveAPKLocally", "Error saving APK locally: ${e.message}")
         }
-    } catch (e: Exception) {
-        Log.e("SaveAPKLocally", "Error saving APK locally: ${e.message}")
-    }
 
-    return null
+        return null
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalTvMaterial3Api::class)

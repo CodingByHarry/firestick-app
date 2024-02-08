@@ -122,7 +122,6 @@ fun LoginScreen(navController: NavHostController) {
         }, modifier = Modifier.width(200.dp)) {
             Text("Login")
         }
-        SmallText(text = "If your unable to login for any reason, please reach out to the contact who supplied this.")
     }
 }
 
