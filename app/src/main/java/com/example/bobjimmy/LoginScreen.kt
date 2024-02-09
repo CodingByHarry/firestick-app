@@ -28,6 +28,7 @@ import com.example.bobjimmy.ui.theme.components.TextField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -104,6 +105,9 @@ fun LoginScreen(navController: NavHostController) {
                             // TODO: Once this is extracted to a checkUser func move this
                             val updatedUserDetails = User(userName)
                             preferenceManager.saveUser(updatedUserDetails)
+                            withContext(Dispatchers.Main) {
+                                navController.navigate("home")
+                            }
                         } else {
                             println("Request failed. Status: $status")
                         }

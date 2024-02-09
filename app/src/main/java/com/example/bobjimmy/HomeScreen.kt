@@ -46,21 +46,26 @@ fun HomeScreen(navController: NavHostController) {
         RegularText(text = "Reporting as user: $user")
         Spacer(Modifier.height(16.dp))
         Button(onClick = {
-            navController.navigate("TVIssue")
+            navController.navigate("tv_issue")
         }, modifier = Modifier.width(200.dp)) {
             Text("TV Issue")
         }
         Button(onClick = {
-            navController.navigate("PlexIssue")
+            navController.navigate("plex_issue")
         }, modifier = Modifier.width(200.dp)) {
             Text("Plex Issue")
         }
         Button(onClick = {
-            navController.navigate("OtherIssue")
+            navController.navigate("other_issue")
         }, modifier = Modifier.width(200.dp)) {
             Text("Other")
         }
 
+        RegularText(
+            text = "My issues",
+            modifier = Modifier
+                .padding(8.dp)
+        )
         val itemList: List<String> = List(20) { index -> "Report Type $index" }
 
         // Display the list using LazyColumn

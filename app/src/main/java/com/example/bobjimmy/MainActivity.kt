@@ -82,6 +82,15 @@ class MainActivity : ComponentActivity() {
                     composable("login") {
                         LoginScreen(navController)
                     }
+                    composable("tv_issue") {
+                        TvIssue(navController)
+                    }
+                    composable("plex_issue") {
+                        PlexIssue(navController)
+                    }
+                    composable("other_issue") {
+                        OtherIssue(navController)
+                    }
                 }
 
                 // Check for update
@@ -115,12 +124,10 @@ class MainActivity : ComponentActivity() {
                 println("VERSION: $latestVersion")
                 println("URL: $latestVersionUrl")
                 println("CURRENT VERSION: $currentBuild")
-
-                // If found and update needed, popup and ask user if they want to update
-
             }
         }
     }
+
     @SuppressLint("CoroutineCreationDuringComposition")
     fun DoTheThing(activity: ComponentActivity, url: String) {
         GlobalScope.launch(Dispatchers.IO) {
